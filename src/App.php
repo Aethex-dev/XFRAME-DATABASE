@@ -5,6 +5,12 @@ namespace xframe\Database;
 class App {
 
     /** 
+     * use clause functions 
+    */
+
+    use select;
+
+    /** 
      * connect to a database
      * 
      * @param string, hostname or IP of database server
@@ -15,15 +21,13 @@ class App {
      * 
      * @param string, name of the database to connect to
      * 
-     * @param string, identifier for when using the database
-     * 
      * @param string, (optional, use null for none) the servers database engine. default is mysql
      * 
      * @param string, (optional) port number of database server
      * 
     */
 
-    function db_connect($hostname, $username, $password, $database, $id, $engine, $port) {
+    function connect($hostname, $username, $password, $database, $engine, $port) {
 
         // define possibly undefined params
         if($port == null) {
@@ -39,17 +43,33 @@ class App {
         }
 
         // connect to database
-        try {
+        if(!$this->conn = new \mysqli($hostname, $username, $password, $database, $port)) {
 
-            if(!$this->$id = new mysqli($hostname, $username, $password, $database, $port)) {
-                throw new exception("Unable to connect to MySQLi database. Please check your credentials");
-            }
-
-        } catch (Exception $e) {
-
-            error($e->getMessage());
-
+            error("Unable to connect to MySQLi database. Please check your credentials");
+                
         }
+
+    }
+
+    /** 
+     * compile query
+     * 
+    */
+
+    function compile() {
+
+        $query = $this->query();
+
+    }
+
+    /** 
+     * execute query
+     * 
+    */
+
+    function execute() {
+
+        $this->stmt->execute();
 
     }
   
