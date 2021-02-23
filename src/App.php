@@ -41,7 +41,9 @@ class App {
         // connect to database
         try {
 
-            $this->$id = new mysqli($hostname, $username, $password, $database, $port);
+            if(!$this->$id = new mysqli($hostname, $username, $password, $database, $port)) {
+                throw new exception("Unable to connect to MySQLi database. Please check your credentials");
+            }
 
         } catch (Exception $e) {
 
