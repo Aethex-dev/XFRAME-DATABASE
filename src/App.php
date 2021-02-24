@@ -8,6 +8,7 @@ class App {
      * use clause functions 
     */
 
+    use clause;
     use select;
 
     /** 
@@ -58,7 +59,15 @@ class App {
 
     function compile() {
 
-        $query = $this->query();
+        $query = $this->query;
+
+        $query = str_replace("{[table]}", $this->table, $query);
+
+        $query = str_replace("{[column]}", $this->column, $query);
+
+        $query = str_replace("{[where]}", $this->where, $query);
+
+        echo $query;
 
     }
 
