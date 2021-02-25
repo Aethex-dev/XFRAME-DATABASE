@@ -11,7 +11,9 @@ trait Select {
      * 
     */
 
-    function select() {
+    function select($param) {
+
+        var_dump($params);
 
         // build query
         $this->query = "SELECT {[column]} FROM {[table]} {[where]};";
