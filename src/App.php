@@ -74,7 +74,7 @@ class App {
 
             if(!$this->conn->set_charset ($params['charset'])) {
 
-                error("Failed to set MySQLi Charset [ $charset ]");
+                error("MySQLI Database Adapter: Failed to set MySQLi Charset [ $charset ]");
 
             }
 
