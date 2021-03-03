@@ -5,18 +5,54 @@ namespace xframe\Database;
 class App {
 
     /** 
-     * use clause functions 
+     * connection object 
+     * 
+    */
+
+    public $conn;
+
+    /** 
+     * mysqli errors
+     * 
+    */
+
+    private $errors;
+
+    /** 
+     * mysqli query type
+     * 
+    */
+
+    private $query_type;
+
+    /** 
+     * mysqli query query built
+     * 
+    */
+
+    private $query_built;
+
+    /** 
+     * use clause functions
+     * 
     */
 
     use clause;
-    use select;
+
+    /** 
+     * use query types
+     * 
+    */
+
+    use Select;
+    use Insert;
 
     /** 
      * clean all mysqli query parameters
      * 
     */
 
-    function clean() {
+    private function clean() {
 
         foreach ($this as $key => $value) {
             
@@ -35,7 +71,7 @@ class App {
      * 
     */
 
-    function connect($params) {
+    function connect(array $params) {
 
         // input validation
         if(!isset($params['port'])) {
@@ -56,17 +92,13 @@ class App {
 
         }
 
-        ob_start();
-
         $this->conn = new \mysqli($params['host'], $params['username'], $params['password'], $params['database'], $params['port']);
 
-        $conn_error = ob_get_clean();
-
-        if(strlen($conn_error) > 1 || $this->conn->connect_error) {
+        if($this->conn->connect_error) {
 
             $database = $params['database'];
 
-            error("MySQLi Failed to connect to database [ $database ]. Please check your credentials.");
+            error("MySQLI Database Adapter: Failed to connect to database [ $database ]. Please check your credentials.");
 
         } else {
 
@@ -74,7 +106,31 @@ class App {
 
             if(!$this->conn->set_charset ($params['charset'])) {
 
-                error("MySQLI Database Adapter: Failed to set MySQLi Charset [ $charset ]");
+                error("MySQLI Database Adapter: Failed to set charset. Given charset: [ $charset ]");
+
+            }
+
+        }
+
+        return $this->conn;
+
+    }
+
+    /** 
+     * check required query parameters
+     * 
+     * @param array, list of all the required query parameters 
+     * 
+    */
+
+    private function required(array $params) {
+
+        foreach($params as $param) {
+
+            if(!isset($this->$param)) {
+
+                error("MySQLi Database Adapter: Missing parameter. [ $param ] parameter is required.");
+                $this->errors = true;
 
             }
 
@@ -87,29 +143,180 @@ class App {
      * 
     */
 
-    function compile() {
+    private function compile() {
 
         $query = $this->query;
 
-        $query = str_replace("{[table]}", $this->table, $query);
+        if(isset($this->where)) {
 
+            $query = str_replace("{[where]}", $this->where, $query);
+
+        }
+
+        $query = str_replace("{[table]}", $this->table, $query);
         $query = str_replace("{[column]}", $this->column, $query);
 
-        $query = str_replace("{[where]}", $this->where, $query);
+        $real_param = $this->param;
 
-        echo $query;
+        foreach ($this->param as &$value) {
+            
+            $value = '?';
 
+        }
+
+        $query = str_replace("{[param]}", implode(",", $this->param), $query);
+
+        $this->param = $real_param;
+
+        $this->query = $query;
+
+    }
+
+    /** 
+     * build query
+     * 
+    */
+
+    private function build() {
+
+        switch($this->query_type) {
+
+            case "SELECT":
+
+                if(!isset($this->where)) {
+
+                    $this->where = "LENGTH('$this->column') >= ?";
+
+                }
+
+                if(!isset($this->param)) {
+
+                    $this->param = array('0');
+
+                }
+
+                if(!isset($this->types)) {
+
+                    $this->types = "s";
+
+                }
+
+                $this->required(array(
+
+                    'table',
+                    'column',
+                    'where',
+                    'types',
+                    'param'
+        
+                ));
+
+                $final = "SELECT {[column]} FROM {[table]} WHERE {[where]};";
+
+                $this->query = $final;
+
+                $this->query_built = true;
+
+            break;
+
+            case "INSERT":
+
+                $this->required(array(
+
+                    'table',
+                    'column',
+                    'param'
+         
+                ));
+
+                $final = "INSERT INTO {[table]} ({[column]}) VALUES ({[param]})";
+
+                $this->query = $final;
+
+                $this->query_built = true;
+
+            break;
+
+            default:
+
+                error("MySQLI Database Adapter: Failed to execute query. Invalid [ query_type ].");
+
+            break;
+
+        }
+        
     }
 
     /** 
      * execute query
      * 
+     * @param object, connection object to your database
+     * 
     */
 
-    function execute() {
+    function execute(object $conn) {
 
-        $this->stmt->execute();
+        if(isset($this->error)) {
+
+            error("MySQLi Database Adapter: Failed to execute query. There are errors in your query, please fix the errors to execute the query");
+            return false;
+
+        }
+
+        switch($this->query_type) {
+
+            case "SELECT":
+
+                // finalize query
+                $this->build();
+                $this->compile();
+
+                // execute query
+                $query = $this->query;
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param($this->types, ...$this->param);
+                $stmt->execute();
+
+                // bind results
+                $result =  $stmt->get_result();
+                $this->result = $result;
+
+            break;
+
+            case "INSERT":
+
+                // finalize query
+                $this->build();
+                $this->compile();
+
+                // execute query
+                echo $this->query;
+                $query = $this->query;
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param($this->types, ...$this->param);
+                $stmt->execute();
+
+            break;
+
+            default:
+
+                error("MySQLI Database Adapter: Failed to execute query. Invalid [ query_type ].");
+
+            break;
+
+        }
 
     }
-  
+
+    /** 
+     * fetch records to an array
+     * 
+    */
+
+    function fetch() {
+
+        return $this->result->fetch_assoc();
+
+    }
+
 }
