@@ -52,9 +52,9 @@ class App {
      * 
     */
 
-    use Select;
-    use Insert;
-    use Update;
+    use select;
+    use insert;
+    use update;
 
     /** 
      * clean all mysqli query parameters
@@ -376,8 +376,7 @@ class App {
          * close mysqli query connection
          * 
         */
-                
-        $this->clean();
+        
         $stmt->close();
 
     }
