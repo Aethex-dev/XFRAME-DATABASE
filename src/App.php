@@ -55,6 +55,7 @@ class App {
     use select;
     use insert;
     use update;
+    use delete;
 
     /** 
      * clean all mysqli query parameters
@@ -76,7 +77,7 @@ class App {
      * 
      * @param array, all the connection parameters
      * 
-     * @return bool, returns if the connection was successful
+     * @return object, returns the new connection object
      * 
     */
 
@@ -170,7 +171,11 @@ class App {
 
         }
 
-        $query = str_replace("{[set]}", $this->set, $query);
+        if(isset($this->set)) {
+
+            $query = str_replace("{[set]}", $this->set, $query);
+
+        }
 
         $real_param = $this->param;
 
@@ -241,7 +246,8 @@ class App {
 
                     'table',
                     'column',
-                    'param'
+                    'param',
+                    'types'
          
                 ));
 
@@ -260,7 +266,8 @@ class App {
                     'table',
                     'set',
                     'where',
-                    'param'
+                    'param',
+                    'types'
         
                 ));
 
@@ -274,7 +281,26 @@ class App {
 
             default:
 
-                error("MySQLI Database Adapter: Failed to execute query. Invalid [ query_type ].");
+                error("MySQLI Database Adapter: Failed to execute query. Invalid query_type [ $this->query_type ].");
+
+            break;
+
+            case "DELETE":
+
+                $this->required(array(
+
+                    'table',
+                    'param',
+                    'where',
+                    'types'
+        
+                ));
+
+                $final = "DELETE FROM {[table]} WHERE {[where]}";
+
+                $this->query = $final;
+
+                $this->query_built = true;
 
             break;
 
@@ -308,9 +334,26 @@ class App {
 
                 // execute query
                 $query = $this->query;
-                $stmt = $conn->prepare($query);
-                $stmt->bind_param($this->types, ...$this->param);
-                $stmt->execute();
+                if(!$stmt = $conn->prepare($query)) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to prepare query statement.");
+                    return false;
+
+                }
+
+                if(!$stmt->bind_param($this->types, ...$this->param)) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to bind query parameters.");
+                    return false;
+
+                }
+
+                if(!$stmt->execute()) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to run execute on statement");
+                    return false;
+
+                }
 
                 // bind results
                 $result =  $stmt->get_result();
@@ -326,9 +369,27 @@ class App {
 
                 // execute query
                 $query = $this->query;
-                $stmt = $conn->prepare($query);
-                $stmt->bind_param($this->types, ...$this->param);
-                $stmt->execute();
+                
+                if(!$stmt = $conn->prepare($query)) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to prepare query statement.");
+                    return false;
+
+                }
+
+                if(!$stmt->bind_param($this->types, ...$this->param)) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to bind query parameters.");
+                    return false;
+
+                }
+
+                if(!$stmt->execute()) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to run execute on statement");
+                    return false;
+
+                }
 
             break;
 
@@ -364,9 +425,41 @@ class App {
 
             break;
 
+            case "DELETE":
+
+                // finalize query
+                $this->build();
+                $this->compile();
+
+                // execute query
+                $query = $this->query;
+
+                if(!$stmt = $conn->prepare($query)) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to prepare query statement.");
+                    return false;
+
+                }
+
+                if(!$stmt->bind_param($this->types, ...$this->param)) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to bind query parameters.");
+                    return false;
+
+                }
+
+                if(!$stmt->execute()) {
+
+                    error("MySQLi Database Adapter: Failed to execute query. Failed to run execute on statement");
+                    return false;
+
+                }
+
+            break; 
+
             default:
 
-                error("MySQLI Database Adapter: Failed to execute query. Invalid [ query_type ].");
+                error("MySQLI Database Adapter: Failed to execute query. Invalid query_type [ $this->query_type ].");
 
             break;
 
